@@ -1,15 +1,176 @@
 CREATE TABLE IF NOT EXISTS "testdb"."vt_sample_claimants_NationalIora_Claims"  AS
+
+
 with iora_members as(
 
 select member_ssn
 from "testdb"."vt_sample_claimants_NationalIora_members" ),
 
 claims_sample as(
-select *
+-- 12 states
+ ( select platform_code
+, product_id
+, plan_id
+, claim_id
+, claim_line_id
+, claim_line_suffix
+, member_id
+, member_key
+, member_ssn
+, member_age
+, network_id
+, network_flag
+, revenue_code
+, drg
+, discharge_status
+, referring_provider_key
+, referring_provider_npi
+, rendering_provider_key
+, rendering_provider_npi
+, billing_provider_npi
+, pay_to_provider_npi
+, attending_provider_npi
+, operating_physician_provider_npi
+, provider_tin
+, facility_npi
+, admitting_diagnosis_code
+, diagnosis_code1
+, diagnosis_code2
+, diagnosis_code3
+, diagnosis_code4
+, diagnosis_code5
+, diagnosis_code6
+, diagnosis_code7
+, diagnosis_code8
+, diagnosis_code9
+, diagnosis_code10
+, icd_version
+, bill_type
+, procedure_code
+, procedure_code_modifier
+, hcpcs_cpt4_suffix_cd_1
+, hcpcs_cpt4_type_cd_1
+, procedure_code_modifier2
+, procedure_code_modifier3
+, procedure_code_modifier4
+, pos
+, ndc
+, icd_procedure_code_1
+, icd_procedure_code_2
+, icd_procedure_code_3
+, auth_number
+, diagnosis_codes
+, icd_procedure_codes
+, cpt_modifier_codes
+, admit_date
+, discharge_date
+, service_from_date
+, service_to_date
+, paid_date
+, claim_received_date
+, billed_amount
+, allowed_amount
+, member_amount
+, paid_amount
+, copay
+, coinsurance
+, deductible
+, cob_amount
+, units
+, service_type
+, payor
+, file_name
+, run_date
+, pal_category
 from analytics_dw.medical_claims
 where member_ssn in (select member_ssn from iora_members)
-and service_from_date between date '2021-01-01' and  date '2021-06-30'
-),
+and service_from_date between date '2021-01-01' and  date '2021-06-30')
+
+UNION ALL
+ 
+
+-- 38 states
+ ( select platform_code
+, product_id
+, plan_id
+, claim_id
+, claim_line_id
+, claim_line_suffix
+, member_id
+, member_key
+, member_ssn
+, member_age
+, network_id
+, network_flag
+, revenue_code
+, drg
+, discharge_status
+, referring_provider_key
+, referring_provider_npi
+, rendering_provider_key
+, rendering_provider_npi
+, billing_provider_npi
+, pay_to_provider_npi
+, attending_provider_npi
+, operating_physician_provider_npi
+, provider_tin
+, facility_npi
+, admitting_diagnosis_code
+, diagnosis_code1
+, diagnosis_code2
+, diagnosis_code3
+, diagnosis_code4
+, diagnosis_code5
+, diagnosis_code6
+, diagnosis_code7
+, diagnosis_code8
+, diagnosis_code9
+, diagnosis_code10
+, icd_version
+, bill_type
+, procedure_code
+, procedure_code_modifier
+, hcpcs_cpt4_suffix_cd_1
+, hcpcs_cpt4_type_cd_1
+, procedure_code_modifier2
+, procedure_code_modifier3
+, procedure_code_modifier4
+, pos
+, ndc
+, icd_procedure_code_1
+, icd_procedure_code_2
+, icd_procedure_code_3
+, auth_number
+, diagnosis_codes
+, icd_procedure_codes
+, cpt_modifier_codes
+, admit_date
+, discharge_date
+, service_from_date
+, service_to_date
+, paid_date
+, claim_received_date
+, billed_amount
+, allowed_amount
+, member_amount
+, paid_amount
+, copay
+, coinsurance
+, deductible
+, cob_amount
+, units
+, service_type
+, payor
+, file_name
+, run_date
+, pal_category
+from "analytics_dw"."claims_38states_history"
+where member_ssn in (select member_ssn from iora_members)
+and service_from_date between date '2021-01-01' and  date '2021-06-30')
+ 
+ 
+ 
+ ),
 
 
 /********** Svc Assignment ******************/
@@ -263,8 +424,6 @@ claims_table as (
 , cob_amount
 , units
 , service_type
-, lob
-, is38states
 , payor
 , file_name
 , run_date
