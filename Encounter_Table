@@ -1,3 +1,4 @@
+/********************************** Triggers************************/
 -- Surg trigger identification
 with triggers as(
 select member_ssn
@@ -12,6 +13,10 @@ where pal_category in (
 'Orthopedic Surgeries: Hip Knee and Shoulder Arthroplasty', 'Spinal fusion decompression kyphoplasty and vertebroplasty')
 group by 1,2,3,4,5
 order by 1,2),
+
+
+/********************************** Shells************************/
+-- Identify shells
 
 Outpatient_ASC_shells as (
 select a.*
@@ -56,7 +61,7 @@ inner join "testdb"."vt_sample_claimants_NationalIora_Claims" b
 on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_start and a.shell_end))
 group by 1,2,3,4,5,6,7),
 
-
+-- merge shells
 Total_Shells as (
   
 select *
@@ -65,6 +70,101 @@ from Outpatient_ASC_shells
 UNION ALL
 
 select *
-from IP_shells)
+from IP_shells),
 
-select * from total_shells
+/********************************** Flags************************/
+-- HH SNF Readmit flags; keeping definition very broad right now, i.e. it can be for any reason
+
+HH_Identification as(
+  select member_ssn
+  ,service_from_date
+  ,major_service_category
+  ,dsc_with_hierarchy
+  from  "testdb"."vt_sample_claimants_NationalIora_Claims"
+  where dsc_with_hierarchy = 'Home Health'
+  group by 1,2,3,4),
+  
+SNF_Identification as(
+  select member_ssn
+  ,service_from_date
+  ,major_service_category
+  ,dsc_with_hierarchy
+  from  "testdb"."vt_sample_claimants_NationalIora_Claims"
+  where dsc_with_hierarchy = 'SNF' 
+  group by 1,2,3,4),
+  
+IP_Readmit_Identification as(
+  select member_ssn
+  ,service_from_date
+  ,major_service_category
+  ,dsc_with_hierarchy
+  from  "testdb"."vt_sample_claimants_NationalIora_Claims"
+  where major_service_category = 'Inpatient Facility' 
+  and dsc_with_hierarchy not in ('Hospice', 'SNF')
+  group by 1,2,3,4),
+
+add_post_trigger_windows as(
+select a.* 
+, date_add('day', 7, a.shell_close) as seven_day_window
+ , date_add('day', 30, a.shell_close) as thirty_day_window
+from total_shells a),
+
+seven_day_HH as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join HH_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.seven_day_window))
+group by 1),
+
+
+thirty_day_HH as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join HH_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.thirty_day_window))
+group by 1),
+
+seven_day_SNF as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join SNF_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.seven_day_window))
+group by 1),
+
+
+thirty_day_SNF as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join SNF_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.thirty_day_window))
+group by 1),
+
+seven_day_Readmit as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join IP_Readmit_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.seven_day_window))
+group by 1),
+
+
+thirty_day_Readmit as (
+select a.member_ssn
+from add_post_trigger_windows a
+inner join IP_Readmit_Identification b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_close and a.thirty_day_window))
+group by 1)
+
+-- add flags to enc table
+
+select a.* 
+, (case when a.member_ssn in (select member_ssn from seven_day_HH) then 1 else 0 end) as seven_day_HH
+, (case when a.member_ssn in (select member_ssn from thirty_day_HH) then 1 else 0 end) as thirty_day_HH
+, (case when a.member_ssn in (select member_ssn from seven_day_SNF) then 1 else 0 end) as seven_day_SNF
+, (case when a.member_ssn in (select member_ssn from thirty_day_SNF) then 1 else 0 end) as thirty_day_SNF
+, (case when a.member_ssn in (select member_ssn from seven_day_Readmit) then 1 else 0 end) as seven_day_Readmit
+, (case when a.member_ssn in (select member_ssn from thirty_day_Readmit) then 1 else 0 end) as thirty_day_Readmit
+from Total_Shells a
+
+
+
+
