@@ -1,8 +1,8 @@
-CREATE TABLE IF NOT EXISTS "testdb"."vt_sample_claimants_IoraPilot_members"  AS
+CREATE TABLE IF NOT EXISTS "testdb"."vt_sample_claimants_NationalIora_Claims"  AS
 with iora_members as(
 
 select member_ssn
-from testdb.iora_patient_cohort),
+from "testdb"."vt_sample_claimants_NationalIora_members" ),
 
 claims_sample as(
 select *
@@ -454,6 +454,13 @@ select a.*
    when (major_service_category =  'Outpatient Facility' and cast(a.op_fac_hiearchy_final as integer) > 3) then a.Service_Count
    else NULL end) as COH_FINAL_UTIL
 from Combine_Tables a
+
+
+
+
+
+
+
 
 
 
