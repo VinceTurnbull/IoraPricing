@@ -1,0 +1,70 @@
+-- Surg trigger identification
+with triggers as(
+select member_ssn
+, service_from_date
+, pal_category
+, pos
+, (case when pos in ('13','21', '27', '28', '31', '32', '33', '34', '35', '51', '55', '56', '61') then 'IP'
+   when pos = '24' then 'ASC'
+   else 'OP' end) as pos_type
+from "testdb"."vt_sample_claimants_NationalIora_Claims"
+where pal_category in (
+'Orthopedic Surgeries: Hip Knee and Shoulder Arthroplasty', 'Spinal fusion decompression kyphoplasty and vertebroplasty')
+group by 1,2,3,4,5
+order by 1,2),
+
+Outpatient_ASC_shells as (
+select a.*
+  , a.service_from_date as shell_start
+  , a.service_from_date as shell_close
+  , sum(b.allowed_amount) as enc_allowed  
+from triggers a
+inner join "testdb"."vt_sample_claimants_NationalIora_Claims" b
+on a.member_ssn = b.member_ssn
+  and a.service_from_date = b.service_from_date
+where a.pos_type != 'IP' 
+group by 1,2,3,4,5,6,7),
+
+
+IP_shell_start_end as(
+select a.coh_admit_date	
+, a.coh_discharge_date
+, b.member_ssn
+, b.service_from_date
+from "testdb"."vt_sample_claimants_NationalIora_Claims" a
+inner join triggers b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.coh_admit_date and  a.coh_discharge_date))
+where a.major_service_category = 'Inpatient Facility'
+and b.pos_type = 'IP' 
+group by 1,2,3,4),
+
+Add_IP_shell_time as (
+select a.* 
+, b.coh_admit_date as shell_start
+, b.coh_discharge_date as shell_end
+from triggers a
+inner join IP_shell_start_end b
+on (a.member_ssn = b.member_ssn and a.service_from_date = b.service_from_date)
+where a.pos_type = 'IP' ),
+
+
+IP_shells as (
+select a.* 
+, sum(b.allowed_amount) as enc_allowed
+from Add_IP_shell_time a
+inner join "testdb"."vt_sample_claimants_NationalIora_Claims" b
+on (a.member_ssn = b.member_ssn and (b.service_from_date between a.shell_start and a.shell_end))
+group by 1,2,3,4,5,6,7),
+
+
+Total_Shells as (
+  
+select *
+from Outpatient_ASC_shells
+
+UNION ALL
+
+select *
+from IP_shells)
+
+select * from total_shells
